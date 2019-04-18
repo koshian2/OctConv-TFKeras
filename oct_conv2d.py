@@ -49,8 +49,8 @@ class OctConv2D(layers.Layer):
         # channels last for TensorFlow
         assert K.image_data_format() == "channels_last"
         # input channels
-        high_in = input_shape[0][3]
-        low_in = input_shape[1][3]
+        high_in = int(input_shape[0][3])
+        low_in = int(input_shape[1][3])
 
         # High -> High
         self.high_to_high_kernel = self.add_weight(name="high_to_high_kernel", 
