@@ -52,7 +52,6 @@ class OctConv2D(layers.Layer):
         high_in = int(input_shape[0][3])
         low_in = int(input_shape[1][3])
 
-        print((*self.kernel_size, high_in, self.high_channels))
         # High -> High
         self.high_to_high_kernel = self.add_weight(name="high_to_high_kernel", 
                                     shape=(*self.kernel_size, high_in, self.high_channels),
