@@ -87,10 +87,14 @@ def create_octconv_wide_resnet(alpha, N=4, k=10):
     high = layers.AveragePooling2D(2)(high)
     low = layers.AveragePooling2D(2)(low)
     high, low = _create_octconv_residual_block([high, low], 64*k, N, alpha)
-    # FC
-    high = layers.GlobalAveragePooling2D()(high)
-    low = layers.GlobalAveragePooling2D()(low)
+    # concat
+    high = layers.AveragePooling2D(2)(high)
     x = layers.Concatenate()([high, low])
+    x = layers.Conv2D(64*k, 1)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+    # FC
+    x = layers.GlobalAveragePooling2D()(x)
     x = layers.Dense(10, activation="softmax")(x)
 
     model = Model(input, x)
