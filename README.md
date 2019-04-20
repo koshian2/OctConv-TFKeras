@@ -47,3 +47,6 @@ Theoretical FLOPs cost are from the paper.
 
 You can see that the time spent on prediction decreases with theoretical FLOPs costs, both CPU and GPU.
 
+# Details (Japanese)
+[最新論文]Octave Convolution（OctConv）を試してみる  
+[https://qiita.com/koshian2/items/0e40a5930f1aa63a66b9](https://qiita.com/koshian2/items/0e40a5930f1aa63a66b9)
