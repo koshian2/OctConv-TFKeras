@@ -13,10 +13,10 @@ high, low = OctConv2D(filters=ch, alpha=alpha)([high, low])
 ```
 
 # Colab Notebook
-**Train OctConv ResNet** (TPU)
+**Train OctConv ResNet** (TPU)  
 https://colab.research.google.com/drive/1MXN46mhCk6s-G_nfJrH1B6_8GXh-a_QH
 
-**Measuring prediction time** (CPU)
+**Measuring prediction time** (CPU)  
 https://colab.research.google.com/drive/12MdVXyB9K3FnpzYNmyc3qu5s59-53WNE
 
 # CIFAR-10
