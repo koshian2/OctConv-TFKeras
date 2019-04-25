@@ -1,9 +1,11 @@
 # OctConv-TFKeras
-Unofficial implementation of Octave Convolutions (OctConv) in TensorFlow / Keras.
+Unofficial implementation of Octave Convolutions (OctConv) in TensorFlow / Keras. 
 
 Y. Chen, H. Fang, B. Xu, Z. Yan, Y. Kalantidis, M. Rohrbach, S. Yan, J. Feng. *Drop an Octave: Reducing Spatial Redundancy in Convolutional Neural Networks with Octave Convolution*. (2019). https://arxiv.org/abs/1904.05049
 
 ![](octconv_02.png)
+
+(Update 2019-04-26) Official implementation by MXNet is available : [https://github.com/facebookresearch/OctConv](https://github.com/facebookresearch/OctConv) 
 
 # Usage
 ```python
