@@ -3,13 +3,16 @@ from oct_conv2d import OctConv2D
 from tensorflow.keras.models import Model
 
 def _create_normal_residual_block(inputs, ch, N):
-    # adujust channels
-    x = layers.Conv2D(ch, 3, padding="same")(inputs)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
     # Conv with skip connections
-    for i in range(N-1):
-        skip = x
+    x = inputs
+    for i in range(N):
+        # adjust channels
+        if i == 0:
+            skip = layers.Conv2D(ch, 1)(x)
+            skip = layers.BatchNormalization()(skip)
+            skip = layers.Activation("relu")(skip)
+        else:
+            skip = x
         x = layers.Conv2D(ch, 3, padding="same")(x)
         x = layers.BatchNormalization()(x)
         x = layers.Activation("relu")(x)
@@ -20,15 +23,20 @@ def _create_normal_residual_block(inputs, ch, N):
     return x
 
 def _create_octconv_residual_block(inputs, ch, N, alpha):
-    # adjust channels
-    high, low = OctConv2D(filters=ch, alpha=alpha)(inputs)
-    high = layers.BatchNormalization()(high)
-    high = layers.Activation("relu")(high)
-    low = layers.BatchNormalization()(low)
-    low = layers.Activation("relu")(low)
+    high, low = inputs
     # OctConv with skip connections
-    for i in range(N-1):
-        skip_high, skip_low = [high, low]
+    for i in range(N):
+        # adjust channels
+        if i == 0:
+            skip_high = layers.Conv2D(int(ch*(1-alpha)), 1)(high)
+            skip_high = layers.BatchNormalization()(skip_high)
+            skip_high = layers.Activation("relu")(skip_high)
+
+            skip_low = layers.Conv2D(int(ch*alpha), 1)(low)
+            skip_low = layers.BatchNormalization()(skip_low)
+            skip_low = layers.Activation("relu")(skip_low)
+        else:
+            skip_high, skip_low = high, low
 
         high, low = OctConv2D(filters=ch, alpha=alpha)([high, low])
         high = layers.BatchNormalization()(high)
@@ -52,9 +60,14 @@ def create_normal_wide_resnet(N=4, k=10):
     """
     # input
     input = layers.Input((32,32,3))
-
+    # 16 channels block
+    x = layers.Conv2D(16, 3, padding="same")(input)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
     # 1st block
-    x = _create_normal_residual_block(input, 16*k, N)
+    x = _create_normal_residual_block(x, 16*k, N)
+    # The original wide resnet is stride=2 conv for downsampling,
+    # but replace them to average pooling because centers are shifted when octconv
     # 2nd block
     x = layers.AveragePooling2D(2)(x)
     x = _create_normal_residual_block(x, 32*k, N)
@@ -77,8 +90,15 @@ def create_octconv_wide_resnet(alpha, N=4, k=10):
     # downsampling for lower
     low = layers.AveragePooling2D(2)(input)
 
+    # 16 channels block
+    high, low = OctConv2D(filters=16, alpha=alpha)([input, low])
+    high = layers.BatchNormalization()(high)
+    high = layers.Activation("relu")(high)
+    low = layers.BatchNormalization()(low)
+    low = layers.Activation("relu")(low)
+
     # 1st block
-    high, low = _create_octconv_residual_block([input, low], 16*k, N, alpha)
+    high, low = _create_octconv_residual_block([high, low], 16*k, N, alpha)
     # 2nd block
     high = layers.AveragePooling2D(2)(high)
     low = layers.AveragePooling2D(2)(low)
