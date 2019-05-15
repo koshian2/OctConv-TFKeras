@@ -1,6 +1,7 @@
 from tensorflow.keras import layers
 from oct_conv2d import OctConv2D
 from tensorflow.keras.models import Model
+import tensorflow.keras.backend as K
 
 def _create_normal_residual_block(inputs, ch, N):
     # Conv with skip connections
@@ -54,6 +55,30 @@ def _create_octconv_residual_block(inputs, ch, N, alpha):
         low = layers.Add()([low, skip_low])
     return [high, low]
 
+
+def _create_octconv_last_residual_block(inputs, ch, alpha):
+    # Last layer for octconv resnets
+    high, low = inputs
+
+    # OctConv
+    high, low = OctConv2D(filters=ch, alpha=alpha)([high, low])
+    high = layers.BatchNormalization()(high)
+    high = layers.Activation("relu")(high)
+    low = layers.BatchNormalization()(low)
+    low = layers.Activation("relu")(low)
+
+    # Last conv layers = alpha_out = 0 : vanila Conv2D
+    # high -> high
+    high_to_high = layers.Conv2D(ch, 3, padding="same")(high)
+    # low -> high
+    low_to_high = layers.Conv2D(ch, 3, padding="same")(low)
+    low_to_high = layers.Lambda(lambda x: 
+                        K.repeat_elements(K.repeat_elements(x, 2, axis=1), 2, axis=2))(low_to_high)
+    x = layers.Add()([high_to_high, low_to_high])
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+    return x
+
 def create_normal_wide_resnet(N=4, k=10):
     """
     Create vanilla conv Wide ResNet (N=4, k=10)
@@ -106,13 +131,9 @@ def create_octconv_wide_resnet(alpha, N=4, k=10):
     # 3rd block
     high = layers.AveragePooling2D(2)(high)
     low = layers.AveragePooling2D(2)(low)
-    high, low = _create_octconv_residual_block([high, low], 64*k, N, alpha)
-    # concat
-    high = layers.AveragePooling2D(2)(high)
-    x = layers.Concatenate()([high, low])
-    x = layers.Conv2D(64*k, 1)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
+    high, low = _create_octconv_residual_block([high, low], 64*k, N-1, alpha)
+    # 3rd block Last
+    x = _create_octconv_last_residual_block([high, low], 64*k, alpha)
     # FC
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Dense(10, activation="softmax")(x)
