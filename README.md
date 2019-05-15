@@ -27,9 +27,9 @@ Experimented with Wide ResNet (N = 4, k = 10). Train with colab TPUs.
 | alpha | Test Accuracy |
 |:-----:|:----------:|
 |   0   |   88.47%   |
-|  0.25 |   94.47%   |
-|  0.5  |   94.41%   |
-|  0.75 |   93.61%   |
+|  0.25 |   94.83%   |
+|  0.5  |   94.40%   |
+|  0.75 |   93.54%   |
 
 ![](figs/training_curve.png)
 
