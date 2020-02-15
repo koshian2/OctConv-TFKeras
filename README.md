@@ -1,7 +1,8 @@
 # OctConv-Keras
 OctConv2D and OctConv2DTranspose Keras version
+Add Octave Convolution Transpose to [Original OctConv keras version](https://github.com/koshian2/OctConv-TFKeras)  
 
-Unofficial implementation of Octave Convolutions (OctConv) in TensorFlow / Keras. 
+__Unofficial implementation of Octave Convolutions (OctConv) in TensorFlow / Keras.__
 
 Y. Chen, H. Fang, B. Xu, Z. Yan, Y. Kalantidis, M. Rohrbach, S. Yan, J. Feng. *Drop an Octave: Reducing Spatial Redundancy in Convolutional Neural Networks with Octave Convolution*. (2019). https://arxiv.org/abs/1904.05049
 
