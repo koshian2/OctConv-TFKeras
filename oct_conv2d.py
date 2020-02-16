@@ -1,12 +1,20 @@
-
 """
 Drop an Octave: Reducing Spatial Redundancy in Convolutional Neural Networks with Octave Convolution
 https://arxiv.org/abs/1904.05049
 """
 
+############## Developer ##############
+# https://github.com/koshian2/
+# 
+# OctConv2DTranspose Added by
+# https://github.com/pykeras/
+# 
+######################################
+
 from tensorflow.keras import layers
 from tensorflow.keras.models import Model
 import tensorflow.keras.backend as K
+from keras.utils import conv_utils
 
 class OctConv2D(layers.Layer):
     def __init__(self, filters, alpha, kernel_size=(3,3), strides=(1,1), 
@@ -101,6 +109,95 @@ class OctConv2D(layers.Layer):
         low_to_low   = K.conv2d(low_input, self.low_to_low_kernel,
                                 strides=self.strides, padding=self.padding,
                                 data_format="channels_last")
+        # Cross Add
+        high_add = high_to_high + low_to_high
+        low_add = high_to_low + low_to_low
+        return [high_add, low_add]
+
+    def compute_output_shape(self, input_shapes):
+        high_in_shape, low_in_shape = input_shapes
+        high_out_shape = (*high_in_shape[:3], self.high_channels)
+        low_out_shape = (*low_in_shape[:3], self.low_channels)
+        return [high_out_shape, low_out_shape]
+
+    def get_config(self):
+        base_config = super().get_config()
+        out_config = {
+            **base_config,
+            "filters": self.filters,
+            "alpha": self.alpha,
+            "filters": self.filters,
+            "kernel_size": self.kernel_size,
+            "strides": self.strides,
+            "padding": self.padding,
+            "kernel_initializer": self.kernel_initializer,
+            "kernel_regularizer": self.kernel_regularizer,
+            "kernel_constraint": self.kernel_constraint,            
+        }
+        return out_config
+    
+class OctConv2DTranspose(layers.Layer):
+    def __init__(self, filters, alpha, kernel_size=(3,3), strides=(1,1), 
+                    padding="same", kernel_initializer='glorot_uniform',
+                    kernel_regularizer=None, kernel_constraint=None,
+                    **kwargs):
+        """
+        OctConv2DTranspose : Octave Convolution Transpose for image( rank 4 tensors)
+        filters: # output channels for low + high
+        alpha: Low channel ratio (alpha=0 -> High only, alpha=1 -> Low only)
+        kernel_size : 3x3 by default, padding : same by default
+        """
+        assert alpha >= 0 and alpha <= 1
+        assert filters > 0 and isinstance(filters, int)
+        super().__init__(**kwargs)
+
+        self.alpha = alpha
+        self.filters = filters
+        self.dilation_rate=(1, 1)
+        # optional values
+        self.kernel_size = kernel_size
+        self.strides = strides
+        self.padding = padding
+        self.kernel_initializer = kernel_initializer
+        self.kernel_regularizer = kernel_regularizer
+        self.kernel_constraint = kernel_constraint
+        # -> Low Channels 
+        self.low_channels = int(self.filters * self.alpha)
+        # -> High Channles
+        self.high_channels = int(self.filters - self.low_channels)
+        
+    def build(self, input_shape):
+        assert len(input_shape) == 2
+        assert len(input_shape[0]) == 4 and len(input_shape[1]) == 4
+        # Assertion for high inputs
+        assert input_shape[0][1] // 2 >= self.kernel_size[0]
+        assert input_shape[0][2] // 2 >= self.kernel_size[1]
+        # Assertion for low inputs
+        assert input_shape[0][1] // input_shape[1][1] == 2
+        assert input_shape[0][2] // input_shape[1][2] == 2
+        # channels last for TensorFlow
+        assert K.image_data_format() == "channels_last"
+        # input channels
+        high_in = int(input_shape[0][3])
+        low_in = int(input_shape[1][3])
+
+        super().build(input_shape)
+
+    def call(self, inputs):
+        # Input = [X^H, X^L]
+        high_input, low_input = inputs
+        assert len(inputs) == 2
+        # High -> High conv
+        high_to_high = layers.Conv2DTranspose(self.high_channels, self.kernel_size, strides=self.strides, padding=self.padding, data_format="channels_last")(high_input)
+        # High -> Low conv
+        high_to_low  = layers.AvgPool2D((2,2), strides=(2,2))(high_input)
+        high_to_low  = layers.Conv2DTranspose(self.low_channels, self.kernel_size, strides=self.strides, padding=self.padding, data_format="channels_last")(high_to_low)
+        # Low -> High conv
+        low_to_high  = layers.Conv2DTranspose(self.high_channels, self.kernel_size, strides=self.strides, padding=self.padding, data_format="channels_last")(low_input)
+        low_to_high = layers.UpSampling2D((2,2), data_format='channels_last', interpolation='nearest')(low_to_high) # Nearest Neighbor Upsampling
+        # low_to_high = K.repeat_elements(low_to_high, 2, axis=2)
+        # Low -> Low conv
+        low_to_low   = layers.Conv2DTranspose(self.low_channels, self.kernel_size, strides=self.strides, padding=self.padding, data_format="channels_last")(low_input)
         # Cross Add
         high_add = high_to_high + low_to_high
         low_add = high_to_low + low_to_low
